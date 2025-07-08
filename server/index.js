@@ -12,6 +12,10 @@ app.use(cors());
 // Routes
 app.use("/api/auth", authRoutes);
 
+const voteRoutes = require("./routes/voteRoutes");
+app.use("/api/vote", voteRoutes);
+
+
 // Start Server
 const PORT = 8080;
 app.listen(PORT, () => {

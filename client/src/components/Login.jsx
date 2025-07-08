@@ -1,57 +1,83 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const Login = () => {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+function Login({ setUser }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState(""); // For showing feedback
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("📤 Sending login data:", formData);
+    setMessage(""); // Clear previous messages
+
     try {
-      const res = await axios.post("/api/auth/login", formData);
+      console.log("📥 Sending login request...");
+      const res = await axios.post("/api/auth/login", { email, password });
       console.log("✅ Login response:", res.data);
-      alert(res.data.message || "Login successful!");
-      setFormData({ email: "", password: "" });
+
+      if (res.data && res.data.user) {
+        setUser(res.data.user);
+        setMessage("✅ Login successful!");
+        navigate("/profile"); // Redirect to profile
+      } else {
+        setMessage("❌ Unexpected response");
+      }
     } catch (err) {
-      console.error("❌ Login error:", err.response?.data || err.message);
-      alert(err.response?.data?.message || "Login failed");
+      console.error("❌ Login Error:", err.response?.data || err.message);
+      if (err.response && err.response.status === 401) {
+        setMessage("❌ Invalid credentials. Try again.");
+      } else {
+        setMessage("❌ Server error. Please try later.");
+      }
     }
   };
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ maxWidth: "400px", margin: "auto", padding: "20px" }}>
       <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleLogin}>
         <input
           type="email"
-          name="email"
           placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
           required
-          style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+          style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
         />
         <input
           type="password"
-          name="password"
           placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
           required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+          style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
         />
-        <button type="submit" style={{ padding: "10px 20px" }}>Login</button>
+        <button
+          type="submit"
+          style={{
+            width: "100%",
+            padding: "10px",
+            backgroundColor: "#4CAF50",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Login
+        </button>
       </form>
+      {message && (
+        <p style={{ marginTop: "10px", color: message.startsWith("✅") ? "green" : "red" }}>
+          {message}
+        </p>
+      )}
     </div>
   );
-};
+}
 
 export default Login;

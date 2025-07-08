@@ -1,88 +1,93 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 
-// ✅ Register Controller
+// Register user
 const registerUser = async (req, res) => {
-    try {
-        console.log("📥 /register hit");
-        const { name, email, password, voterId } = req.body;
+  try {
+    const { name, email, password, voterId } = req.body;
+    console.log("📥 /register hit");
 
-        // Check if all fields are provided
-        if (!name || !email || !password || !voterId) {
-            console.log("⚠️ Missing fields in register");
-            return res.status(400).json({ message: "All fields are required" });
-        }
-
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            console.log("⚠️ User already exists with email:", email);
-            return res.status(409).json({ message: "User already exists" });
-        }
-
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create new user
-        const newUser = new User({
-            name,
-            email,
-            password: hashedPassword,
-            voterId,
-        });
-
-        await newUser.save();
-        console.log("✅ User registered successfully:", email);
-
-        return res.status(201).json({ message: "User registered successfully" });
-    } catch (err) {
-        console.error("❌ Error in registerUser:", err.message);
-        res.status(500).json({ message: "Server error" });
+    if (!name || !email || !password || !voterId) {
+      console.log("❌ Missing fields");
+      return res.status(400).json({ message: "All fields are required" });
     }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      console.log("❌ User already exists:", email);
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      voterId,
+    });
+
+    await newUser.save();
+    console.log("🆕 New user created & saved:", email);
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (err) {
+    console.error("❌ Error in register:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
-// ✅ Login Controller
+// Login user
 const loginUser = async (req, res) => {
-    try {
-        console.log("📥 /login hit");
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
+    console.log("📥 /login hit");
 
-        // Check if email and password are provided
-        if (!email || !password) {
-            console.log("⚠️ Missing email or password");
-            return res.status(400).json({ message: "Email and password are required" });
-        }
-
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            console.log("❌ User not found:", email);
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        // Compare password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            console.log("❌ Invalid password for email:", email);
-            return res.status(401).json({ message: "Invalid email or password" });
-        }
-
-        console.log("✅ Login successful for user:", email);
-        return res.status(200).json({
-            message: "Login successful",
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-            },
-        });
-    } catch (err) {
-        console.error("❌ Error in loginUser:", err.message);
-        res.status(500).json({ message: "Server error" });
+    if (!email || !password) {
+      console.log("❌ Missing credentials");
+      return res.status(400).json({ message: "Email and password are required" });
     }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("❌ User not found:", email);
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.log("❌ Invalid password for:", email);
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    console.log("✅ Login successful for user:", email);
+    res.status(200).json({ message: "Login successful", user: { name: user.name, email: user.email, voterId: user.voterId } });
+  } catch (err) {
+    console.error("❌ Error in login:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
-module.exports = {
-    registerUser,
-    loginUser,
+// Get user profile
+const getProfile = async (req, res) => {
+  try {
+    const { email } = req.query;
+    console.log("📥 /profile hit for email:", email);
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email }).select("-password");
+    if (!user) {
+      console.log("❌ User not found for profile:", email);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("✅ User profile fetched:", user.email);
+    res.status(200).json({ user });
+  } catch (err) {
+    console.error("❌ Error fetching profile:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
 };
+
+module.exports = { registerUser, loginUser, getProfile };
