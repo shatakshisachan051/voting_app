@@ -1,41 +1,60 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
 import Navbar from "./components/Navbar";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import VoterProfile from "./components/VoterProfile";
 
 function App() {
-  const [user, setUser] = useState(() => {
-    // Load user from localStorage if available
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const isLoggedIn = !!user;
-
-  // Sync user state to localStorage on change
+  // Persist login across refresh
   useEffect(() => {
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("user");
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+      setIsLoggedIn(true);
     }
-  }, [user]);
+  }, []);
 
-  console.log("🌐 App.jsx render: isLoggedIn =", isLoggedIn);
-  console.log("👤 App.jsx user =", user);
+  const handleLogin = (userData) => {
+    setIsLoggedIn(true);
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser(null);
+    localStorage.removeItem("user");
+  };
 
   return (
     <Router>
-      <Navbar user={user} setUser={setUser} />
+      <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
       <Routes>
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login setUser={setUser} />} />
+        <Route
+          path="/"
+          element={<h1>Welcome to the Voting App</h1>}
+        />
+        <Route
+          path="/register"
+          element={<Register />}
+        />
+        <Route
+          path="/login"
+          element={<Login onLogin={handleLogin} />}
+        />
         <Route
           path="/profile"
-          element={<VoterProfile user={user} isLoggedIn={isLoggedIn} />}
+          element={
+            <VoterProfile
+              isLoggedIn={isLoggedIn}
+              user={user}
+              onLogout={handleLogout}
+            />
+          }
         />
       </Routes>
     </Router>

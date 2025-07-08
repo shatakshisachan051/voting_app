@@ -1,29 +1,28 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-function VoterProfile({ user, isLoggedIn }) {
+const VoterProfile = ({ isLoggedIn, user, onLogout }) => {
   const navigate = useNavigate();
-
-  console.log("🔄 VoterProfile render: isLoggedIn =", isLoggedIn);
-  console.log("👤 Current user:", user);
 
   useEffect(() => {
     if (!isLoggedIn) {
-      console.log("❌ Not logged in. Redirecting to /login...");
+      console.warn("❌ Not logged in. Redirecting to /login...");
       navigate("/login");
     }
   }, [isLoggedIn, navigate]);
 
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn || !user) {
+    return null; // or a loader
+  }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Voter Profile</h2>
-      <p><strong>Name:</strong> {user.name}</p>
-      <p><strong>Email:</strong> {user.email}</p>
-      <p><strong>Voter ID:</strong> {user.voterId}</p>
+    <div>
+      <h2>Welcome, {user.name}</h2>
+      <p>Email: {user.email}</p>
+      <p>You are successfully logged in!</p>
+      <button onClick={onLogout}>Logout</button>
     </div>
   );
-}
+};
 
 export default VoterProfile;
