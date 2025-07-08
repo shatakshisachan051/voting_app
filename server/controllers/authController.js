@@ -1,84 +1,94 @@
 const User = require("../models/User");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
+// Register User
+const registerUser = async (req, res) => {
+  const { name, email, password } = req.body;
 
-// Register a new user
-exports.register = async (req, res) => {
   try {
-    const { name, email, password, voterId } = req.body;
-    console.log("📥 Register request:", req.body);
-
-    // Simple validation
-    if (!name || !email || !password || !voterId) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create and save user
-    const newUser = new User({ name, email, password, voterId });
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+    });
+
     await newUser.save();
 
-    console.log("✅ User registered:", email);
-    res.status(201).json({ message: "User registered successfully", user: newUser });
-  } catch (err) {
-    console.error("❌ Error registering user:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    console.error("❌ Error in registerUser:", error);
+    res.status(500).json({ message: "Error registering user", error });
   }
 };
 
-// Login user
-exports.login = async (req, res) => {
-  console.log("📥 Login attempt:", req.body);
-
+// Login User
+const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  // Check user
-  const user = await User.findOne({ email });
-  if (!user) {
-    console.log("❌ User not found");
-    return res.status(401).json({ msg: "Invalid email or password" });
-  }
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-  // Compare passwords
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    console.log("❌ Password mismatch");
-    return res.status(401).json({ msg: "Invalid email or password" });
-  }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-  console.log("✅ Login successful for:", email);
-  res.status(200).json({ msg: "Login success", user });
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || "your_secret_key",
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("❌ Error in loginUser:", error);
+    res.status(500).json({ message: "Error logging in", error });
+  }
 };
 
+// Update User
+const updateUser = async (req, res) => {
+  const { id } = req.params;
 
-
-
-// Update voter profile
-exports.updateProfile = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, email } = req.body;
-    console.log(`📥 Update request for user ${id}:`, req.body);
-
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      { name, email },
-      { new: true }
+      req.body,
+      { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    console.log("✅ Profile updated:", updatedUser.email);
-    res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
-  } catch (err) {
-    console.error("❌ Error updating profile:", err);
-    res.status(500).json({ message: "Server error" });
+    res.json(updatedUser);
+  } catch (error) {
+    console.error("❌ Error updating user:", error);
+    res.status(500).json({ message: "Error updating user", error });
   }
+};
+
+module.exports = {
+  registerUser,
+  loginUser,
+  updateUser,
 };

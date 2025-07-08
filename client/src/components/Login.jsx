@@ -1,30 +1,39 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import axios from "../axios"; // ✅ Import our axios instance
 
 const Login = ({ setIsLoggedIn, setUser }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    console.log("📥 Sending login request...");
 
     try {
-      console.log("📥 Sending login request...");
-      const response = await axios.post("/api/auth/login", { email, password });
+      const response = await axios.post("/auth/login", formData); // ✅ Backend URL simplified
       console.log("✅ Login response:", response.data);
 
-      // ✅ Save token and user
-      localStorage.setItem("token", response.data.token);
       setIsLoggedIn(true);
-      setUser(response.data.user);
+      setUser(response.data.user); // Save user info
+      localStorage.setItem("token", response.data.token); // Optional: Save token
 
-      // ✅ Redirect to profile
-      navigate("/profile");
+      navigate("/profile"); // Redirect to profile
     } catch (error) {
       console.error("❌ Login Error:", error.response?.data || error.message);
-      alert("Login failed: " + (error.response?.data?.message || error.message));
+      alert(error.response?.data?.message || "Login failed");
     }
   };
 
@@ -32,22 +41,28 @@ const Login = ({ setIsLoggedIn, setUser }) => {
     <div>
       <h2>Login</h2>
       <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <br />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <br />
+        <div>
+          <label>Email:</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div>
+          <label>Password:</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
         <button type="submit">Login</button>
       </form>
     </div>
