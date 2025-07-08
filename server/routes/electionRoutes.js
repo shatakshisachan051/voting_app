@@ -1,15 +1,16 @@
 const express = require("express");
 const router = express.Router();
+
 const Election = require("../models/Election");
 
-// POST /api/elections
-router.post("/", async (req, res) => {
+// GET /api/elections -> fetch all elections
+router.get("/", async (req, res) => {
   try {
-    const election = new Election(req.body);
-    await election.save();
-    res.status(201).json({ message: "Election created!", election });
-  } catch (err) {
-    res.status(500).json({ message: "Error creating election", error: err });
+    const elections = await Election.find();
+    res.json(elections);
+  } catch (error) {
+    console.error("❌ Error fetching elections:", error);
+    res.status(500).json({ message: "Failed to fetch elections" });
   }
 });
 

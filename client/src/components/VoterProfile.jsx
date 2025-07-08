@@ -1,34 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../axios";
 
 const VoterProfile = ({ user, isLoggedIn }) => {
   const navigate = useNavigate();
-
+  const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    address: "",
-    age: "",
+    name: user?.name || "",
+    email: user?.email || "",
   });
 
   console.log("🔄 VoterProfile render: isLoggedIn =", isLoggedIn);
   console.log("👤 Current user:", user);
 
   useEffect(() => {
-    if (!isLoggedIn || !user) {
-      console.log("❌ Not logged in. Redirecting to /login...");
+    if (!isLoggedIn) {
+      console.error("❌ Not logged in. Redirecting to /login...");
       navigate("/login");
-    } else {
-      // Initialize form with user data
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        address: user.address || "",
-        age: user.age || "",
-      });
     }
-  }, [isLoggedIn, user, navigate]);
+  }, [isLoggedIn, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,75 +30,47 @@ const VoterProfile = ({ user, isLoggedIn }) => {
 
   const handleSave = async () => {
     try {
-      // Use user.id (not user._id)
-      console.log("💾 Saving profile for userId:", user?.id);
-
-      const response = await axios.put(
-        `/api/users/${user?.id}`,
-        formData
-      );
+      const response = await axios.put(`/users/${user.id}`, formData);
       console.log("✅ Profile updated:", response.data);
       alert("Profile updated successfully!");
+      setEditing(false);
     } catch (error) {
-      console.error("❌ Error updating profile:", error.response || error);
+      console.error("❌ Error updating profile:", error.response?.data || error.message);
       alert("Failed to update profile.");
     }
   };
 
   return (
     <div>
-      <h2>Voter Profile</h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSave();
-        }}
-      >
+      <h2>🎉 Welcome, {user?.name}</h2>
+      <p>📧 Email: {user?.email}</p>
+      <p>🆔 User ID: {user?.id}</p>
+
+      {editing ? (
         <div>
+          <h3>✏️ Edit Profile</h3>
           <label>Name:</label>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            required
           />
-        </div>
-
-        <div>
+          <br />
           <label>Email:</label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
-            required
           />
+          <br />
+          <button onClick={handleSave}>💾 Save</button>
+          <button onClick={() => setEditing(false)}>❌ Cancel</button>
         </div>
-
-        <div>
-          <label>Address:</label>
-          <input
-            type="text"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div>
-          <label>Age:</label>
-          <input
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={handleChange}
-            min="18"
-          />
-        </div>
-
-        <button type="submit">Save Profile</button>
-      </form>
+      ) : (
+        <button onClick={() => setEditing(true)}>✏️ Edit Profile</button>
+      )}
     </div>
   );
 };
