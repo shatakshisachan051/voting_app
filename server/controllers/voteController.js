@@ -1,38 +1,30 @@
-const Candidate = require("../models/Candidate");
+const Vote = require("../models/Vote");
 
-// Fetch all candidates
-const getCandidates = async (req, res) => {
+const submitVote = async (req, res) => {
+  const { userId, electionId, candidate } = req.body;
+
   try {
-    console.log("📥 /candidates hit");
-    const candidates = await Candidate.find();
-    res.status(200).json({ candidates });
-  } catch (err) {
-    console.error("❌ Error fetching candidates:", err.message);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// Cast vote
-const castVote = async (req, res) => {
-  try {
-    const { candidateId } = req.body;
-    console.log("📥 /vote hit for candidate:", candidateId);
-
-    const candidate = await Candidate.findById(candidateId);
-    if (!candidate) {
-      console.log("❌ Candidate not found");
-      return res.status(404).json({ message: "Candidate not found" });
+    // Check if user already voted
+    const existingVote = await Vote.findOne({ user: userId, election: electionId });
+    if (existingVote) {
+      return res.status(400).json({ message: "You have already voted in this election." });
     }
 
-    candidate.votes += 1; // increment vote count
-    await candidate.save();
+    // Save vote
+    const vote = new Vote({
+      user: userId,
+      election: electionId,
+      candidate,
+      votedAt: new Date()
+    });
+    await vote.save();
 
-    console.log("✅ Vote casted for:", candidate.name);
-    res.status(200).json({ message: `Vote casted for ${candidate.name}` });
-  } catch (err) {
-    console.error("❌ Error casting vote:", err.message);
-    res.status(500).json({ message: "Server error" });
+    res.status(201).json({ message: "Vote submitted successfully!" });
+  } catch (error) {
+    console.error("❌ Error submitting vote:", error);
+    res.status(500).json({ message: "Error submitting vote", error });
   }
 };
 
-module.exports = { getCandidates, castVote };
+// ✅ Export correctly
+module.exports = { submitVote };

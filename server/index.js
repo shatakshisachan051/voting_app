@@ -2,6 +2,11 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const voteRoutes = require("./routes/voteRoutes");
+
+const electionRoutes = require("./routes/electionRoutes");
+
+
 
 dotenv.config();
 
@@ -23,6 +28,12 @@ app.use("/api/users", userRoutes); // For updating user profile
 app.get("/", (req, res) => {
   res.send("🚀 Voting App Backend is running!");
 });
+
+
+app.use("/api/votes", voteRoutes);
+
+app.use("/api/elections", electionRoutes);
+
 
 // ✅ Connect to MongoDB
 mongoose

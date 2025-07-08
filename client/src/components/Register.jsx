@@ -17,7 +17,7 @@ const Register = () => {
     e.preventDefault();
     console.log("📤 Sending registration data:", formData);
     try {
-      const res = await axios.post("/api/auth/register", formData);
+      const res = await axios.post("/api/auth/register", formData); 
       console.log("✅ Registration response:", res.data);
       alert(res.data.message || "Registration successful!");
       setFormData({ name: "", email: "", password: "", voterId: "" });

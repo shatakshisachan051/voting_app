@@ -1,9 +1,7 @@
 const express = require("express");
-const { getCandidates, castVote } = require("../controllers/voteController");
-
 const router = express.Router();
+const { submitVote } = require("../controllers/voteController"); // ✅ correct import
 
-router.get("/candidates", getCandidates);
-router.post("/vote", castVote);
+router.post("/", submitVote); // ✅ handler is a function
 
 module.exports = router;
