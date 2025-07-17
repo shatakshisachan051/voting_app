@@ -1,17 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const { verifyToken } = require("../middlewares/authMiddleware"); // secure route
 
-const Election = require("../models/Election");
+// Dummy elections data for now
+const elections = [
+  
+];
 
-// GET /api/elections -> fetch all elections
-router.get("/", async (req, res) => {
-  try {
-    const elections = await Election.find();
-    res.json(elections);
-  } catch (error) {
-    console.error("❌ Error fetching elections:", error);
-    res.status(500).json({ message: "Failed to fetch elections" });
-  }
+// GET /api/elections - Get all elections (secured)
+router.get("/", verifyToken, (req, res) => {
+  res.status(200).json(elections);
 });
 
 module.exports = router;

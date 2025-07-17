@@ -7,23 +7,33 @@ const Register = () => {
     email: "",
     password: "",
     voterId: "",
+    role: "voter",
+    adminCode: "",
   });
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("📤 Sending registration data:", formData);
+    if (formData.role === "admin") {
+      if (formData.adminCode !== "admin123") {
+        setError("Invalid admin code.");
+        return;
+      }
+    }
     try {
-      const res = await axios.post("/api/auth/register", formData); 
-      console.log("✅ Registration response:", res.data);
+      const payload = { ...formData };
+      if (formData.role === "admin") delete payload.voterId;
+      if (formData.role === "voter") delete payload.adminCode;
+      const res = await axios.post("/api/auth/register", payload); 
       alert(res.data.message || "Registration successful!");
-      setFormData({ name: "", email: "", password: "", voterId: "" });
+      setFormData({ name: "", email: "", password: "", voterId: "", role: "voter", adminCode: "" });
     } catch (err) {
-      console.error("❌ Registration error:", err.response?.data || err.message);
-      alert(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || "Registration failed");
     }
   };
 
@@ -47,6 +57,7 @@ const Register = () => {
           value={formData.email}
           onChange={handleChange}
           required
+          autoComplete="username"
           style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
         />
         <input
@@ -56,18 +67,43 @@ const Register = () => {
           value={formData.password}
           onChange={handleChange}
           required
-          autoComplete="current-password"
+          autoComplete="new-password"
           style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
         />
-        <input
-          type="text"
-          name="voterId"
-          placeholder="Voter ID"
-          value={formData.voterId}
+        <select
+          name="role"
+          value={formData.role}
           onChange={handleChange}
-          required
           style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
-        />
+        >
+          <option value="voter">Voter</option>
+          <option value="admin">Admin</option>
+        </select>
+        {formData.role === "voter" && (
+          <input
+            type="text"
+            name="voterId"
+            placeholder="Voter ID"
+            value={formData.voterId}
+            onChange={handleChange}
+            required
+            autoComplete="off"
+            style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+          />
+        )}
+        {formData.role === "admin" && (
+          <input
+            type="password"
+            name="adminCode"
+            placeholder="Admin Code"
+            value={formData.adminCode}
+            onChange={handleChange}
+            required
+            autoComplete="off"
+            style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+          />
+        )}
+        {error && <p style={{ color: "red" }}>{error}</p>}
         <button type="submit" style={{ padding: "10px 20px" }}>Register</button>
       </form>
     </div>

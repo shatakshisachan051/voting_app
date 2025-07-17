@@ -1,21 +1,17 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const Navbar = ({ isLoggedIn, setIsLoggedIn, setUser }) => {
+const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // ✅ Clear user & token from localStorage
-    localStorage.removeItem("user");
     localStorage.removeItem("token");
-
-    // ✅ Update state
+    localStorage.removeItem("user");
     setIsLoggedIn(false);
-    setUser(null);
-
-    // ✅ Redirect to login
     navigate("/login");
   };
+
+  const user = JSON.parse(localStorage.getItem("user"));
 
   return (
     <nav
@@ -23,48 +19,47 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn, setUser }) => {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "1rem 2rem",
-        backgroundColor: "#282c34",
+        padding: "10px 20px",
+        backgroundColor: "#333",
         color: "white",
       }}
     >
-      <div>
-        <Link
-          to="/"
-          style={{
-            color: "white",
-            textDecoration: "none",
-            fontSize: "1.5rem",
-            fontWeight: "bold",
-          }}
-        >
-          🗳 Voting App
-        </Link>
-      </div>
+      <h2>🗳️ Voting App</h2>
 
-      <div style={{ display: "flex", gap: "1rem" }}>
+      <div style={{ display: "flex", gap: "15px" }}>
         {isLoggedIn ? (
           <>
-            <Link
-              to="/profile"
-              style={{ color: "white", textDecoration: "none" }}
-            >
-              Profile
-            </Link>
-            <Link
-              to="/voting"
-              style={{ color: "white", textDecoration: "none" }}
-            >
-              Vote
-            </Link>
+            {user?.role === "voter" && (
+              <>
+                <Link to="/profile" style={linkStyle}>
+                  Profile
+                </Link>
+                <Link to="/voting" style={linkStyle}>
+                  Voting
+                </Link>
+                <Link to="/history" style={linkStyle}>
+                  History
+                </Link>
+              </>
+            )}
+            {user?.role === "admin" && (
+              <>
+                <Link to="/admin" style={linkStyle}>
+                  Dashboard
+                </Link>
+                <Link to="/admin/elections" style={linkStyle}>
+                  Manage Elections
+                </Link>
+              </>
+            )}
             <button
               onClick={handleLogout}
               style={{
-                background: "transparent",
-                color: "white",
-                border: "1px solid white",
-                padding: "0.5rem 1rem",
-                cursor: "pointer",
+                ...linkStyle,
+                backgroundColor: "#e74c3c",
+                border: "none",
+                padding: "5px 10px",
+                borderRadius: "5px",
               }}
             >
               Logout
@@ -72,16 +67,10 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn, setUser }) => {
           </>
         ) : (
           <>
-            <Link
-              to="/login"
-              style={{ color: "white", textDecoration: "none" }}
-            >
+            <Link to="/login" style={linkStyle}>
               Login
             </Link>
-            <Link
-              to="/register"
-              style={{ color: "white", textDecoration: "none" }}
-            >
+            <Link to="/register" style={linkStyle}>
               Register
             </Link>
           </>
@@ -89,6 +78,12 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn, setUser }) => {
       </div>
     </nav>
   );
+};
+
+const linkStyle = {
+  color: "white",
+  textDecoration: "none",
+  fontSize: "16px",
 };
 
 export default Navbar;

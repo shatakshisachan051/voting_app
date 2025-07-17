@@ -1,94 +1,70 @@
+import axios from "axios";
 import React, { useEffect, useState } from "react";
-import axios from "../axios"; // ✅ Use axios instance
-import { useNavigate } from "react-router-dom";
 
-const Voting = ({ user, isLoggedIn }) => {
-  const navigate = useNavigate();
-
+const Voting = () => {
   const [elections, setElections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    // Redirect if not logged in
-    if (!isLoggedIn || !user) {
-      navigate("/login");
-      return;
-    }
-
-    // Fetch elections
-    const fetchElections = async () => {
-      try {
-        const response = await axios.get("/elections");
-        console.log("📥 Elections fetched:", response.data);
-        setElections(response.data);
-        setLoading(false);
-      } catch (error) {
-        console.error("❌ Error fetching elections:", error);
-        alert("Failed to load elections.");
-        setLoading(false);
-      }
-    };
-
-    fetchElections();
-  }, [isLoggedIn, user, navigate]);
-
-  const handleVote = async (electionId, candidate) => {
+  const fetchElections = async () => {
     try {
-      const response = await axios.post("/votes", {
-        userId: user.id,
-        electionId,
-        candidate,
+      const token = localStorage.getItem("token");
+      const response = await axios.get("/api/elections", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("✅ Vote submitted:", response.data);
-      alert(response.data.message);
-    } catch (error) {
-      console.error("❌ Error voting:", error.response?.data || error.message);
-      alert(
-        error.response?.data?.message || "Failed to submit vote. Try again."
-      );
+
+      // Check if backend sent a refreshed token
+      const refreshedToken = response.headers["x-refreshed-token"];
+      if (refreshedToken) {
+        localStorage.setItem("token", refreshedToken);
+      }
+
+      setElections(response.data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to fetch elections");
     }
   };
 
-  if (loading) return <p>Loading elections...</p>;
+  const handleVote = async (electionId, candidateId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        "/api/votes",
+        { electionId, candidateId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(response.data.message || "Vote submitted successfully!");
+      fetchElections(); // Optionally refresh elections
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to submit vote");
+    }
+  };
+
+  useEffect(() => {
+    fetchElections();
+  }, []);
 
   return (
     <div>
-      <h2>🗳️ Elections</h2>
-      {elections.length === 0 ? (
-        <p>No elections available.</p>
-      ) : (
-        elections.map((election) => (
-          <div
-            key={election._id}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-              padding: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <h3>{election.title}</h3>
-            <p>
-              🗓️ {new Date(election.startDate).toLocaleDateString()} -{" "}
-              {new Date(election.endDate).toLocaleDateString()}
-            </p>
-            <h4>Candidates:</h4>
+      <h2>Elections</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <ul>
+        {elections.map((election) => (
+          <li key={election.id || election._id}>
+            <h3>{election.name || election.title}</h3>
+            <p>Status: {election.status}</p>
             <ul>
-              {election.candidates.map((candidate, idx) => (
-                <li key={idx}>
-                  {candidate}{" "}
-                  <button
-                    onClick={() => handleVote(election._id, candidate)}
-                    style={{ marginLeft: "10px" }}
-                  >
+              {(election.candidates || []).map((candidate, idx) => (
+                <li key={candidate._id || idx}>
+                  {candidate.name || candidate}
+                  <button onClick={() => handleVote(election.id || election._id, candidate._id || candidate)}>
                     Vote
                   </button>
                 </li>
               ))}
             </ul>
-          </div>
-        ))
-      )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

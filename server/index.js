@@ -1,50 +1,41 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const voteRoutes = require("./routes/voteRoutes");
-
-const electionRoutes = require("./routes/electionRoutes");
-
-
-
-dotenv.config();
-
-const app = express();
-
-// ✅ Middleware
-app.use(express.json());
-app.use(cors());
-
-// ✅ Import routes
+const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const voteRoutes = require("./routes/voteRoutes");
+const { verifyToken } = require("./middlewares/authMiddleware");
+const electionRoutes = require("./routes/electionRoutes");
+const Election = require("./models/Election")
+const Candidate = require("./models/Candidate")
 
-// ✅ API routes
-app.use("/api/auth", authRoutes);  // For register & login
-app.use("/api/users", userRoutes); // For updating user profile
+// Load environment variables
+dotenv.config();
 
-// ✅ Home route for testing
+// Initialize app
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json()); // ✅ parse JSON request bodies
+
+// Connect to database
+connectDB();
+
+// Routes
+app.use("/api/auth", authRoutes); // ✅ No auth middleware for login/register
+app.use("/api/users", verifyToken, userRoutes); // ✅ Protected
+app.use("/api/votes", verifyToken, voteRoutes); // ✅ Protected
+app.use("/api/elections",verifyToken, electionRoutes);
+
+// Root route
 app.get("/", (req, res) => {
-  res.send("🚀 Voting App Backend is running!");
+  res.send("✅ Voting App API is running");
 });
 
-
-app.use("/api/votes", voteRoutes);
-
-app.use("/api/elections", electionRoutes);
-
-
-// ✅ Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO_URL || "mongodb://127.0.0.1:27017/voting_app")
-  .then(() => {
-    console.log("✅ MongoDB Connected");
-    const PORT = process.env.PORT || 8080;
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
-  });
+// Start server
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

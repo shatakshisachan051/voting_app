@@ -1,68 +1,64 @@
 import React, { useState } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import axios from "../axios"; // ✅ Import our axios instance
 
 const Login = ({ setIsLoggedIn, setUser }) => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("voter");
+  const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("📥 Sending login request...");
-
     try {
-      const response = await axios.post("/auth/login", formData); // ✅ Backend URL simplified
-      console.log("✅ Login response:", response.data);
-
+      const response = await axios.post(
+        "/api/auth/login",
+        { email, password, role }
+      );
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
       setIsLoggedIn(true);
-      setUser(response.data.user); // Save user info
-      localStorage.setItem("token", response.data.token); // Optional: Save token
-
-      navigate("/profile"); // Redirect to profile
+      setUser(response.data.user);
+      if (response.data.user.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/profile");
+      }
     } catch (error) {
-      console.error("❌ Login Error:", error.response?.data || error.message);
-      alert(error.response?.data?.message || "Login failed");
+      setError(error.response?.data?.message || "Invalid credentials. Please try again.");
     }
   };
 
   return (
     <div>
       <h2>Login</h2>
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div>
-          <label>Password:</label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
+      <form onSubmit={handleSubmit}>
+        <select
+          value={role}
+          onChange={e => setRole(e.target.value)}
+          style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+        >
+          <option value="voter">Voter</option>
+          <option value="admin">Admin</option>
+        </select>
+        <input
+          type="email"
+          placeholder="Email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+        /><br/>
+        <input
+          type="password"
+          placeholder="Password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        /><br/>
+        {error && <p style={{ color: "red" }}>{error}</p>}
         <button type="submit">Login</button>
       </form>
     </div>

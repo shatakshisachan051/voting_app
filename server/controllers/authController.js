@@ -2,9 +2,9 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Register User
+// Register new user
 const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });
@@ -12,83 +12,59 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    if (role === "voter" && req.body.voterId) {
+      const existingVoterId = await User.findOne({ voterId: req.body.voterId });
+      if (existingVoterId) {
+        return res.status(400).json({ message: "Voter ID already exists" });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    await newUser.save();
+    const userData = { name, email, password: hashedPassword, role: role === "admin" ? "admin" : "voter" };
+    if (role === "voter" && req.body.voterId) {
+      userData.voterId = req.body.voterId;
+    }
+    console.log(userData,"trying to register");
+    const user = new User(userData);
+    await user.save();
 
     res.status(201).json({ message: "User registered successfully" });
-  } catch (error) {
-    console.error("❌ Error in registerUser:", error);
-    res.status(500).json({ message: "Error registering user", error });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ message: "Server error during registration" });
   }
 };
 
-// Login User
+// Login user
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
   try {
+    const { email, password, role } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(401).json({ message: "No user found for this email." });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+    if (role && user.role !== role) {
+      return res.status(401).json({ message: `Role mismatch. User is '${user.role}', you selected '${role}'.` });
     }
-
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || "your_secret_key",
-      { expiresIn: "1h" }
-    );
-
-    res.json({
+    console.log(user,"user found");
+    console.log(password,"password");
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Incorrect password." });
+    }
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    res.status(200).json({
       message: "Login successful",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
       token,
+      user: { email: user.email, name: user.name, role: user.role },
     });
   } catch (error) {
-    console.error("❌ Error in loginUser:", error);
-    res.status(500).json({ message: "Error logging in", error });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Update User
-const updateUser = async (req, res) => {
-  const { id } = req.params;
 
-  try {
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json(updatedUser);
-  } catch (error) {
-    console.error("❌ Error updating user:", error);
-    res.status(500).json({ message: "Error updating user", error });
-  }
-};
-
-module.exports = {
-  registerUser,
-  loginUser,
-  updateUser,
-};
+module.exports = { registerUser, loginUser };
