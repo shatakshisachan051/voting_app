@@ -24,7 +24,7 @@ const registerUser = async (req, res) => {
     if (role === "voter" && req.body.voterId) {
       userData.voterId = req.body.voterId;
     }
-    console.log(userData,"trying to register");
+    console.log("Registering user:", userData);
     const user = new User(userData);
     await user.save();
 
@@ -39,32 +39,56 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password, role } = req.body;
+    
+    console.log("Login attempt for:", email);
+    
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: "No user found for this email." });
     }
+    
     if (role && user.role !== role) {
       return res.status(401).json({ message: `Role mismatch. User is '${user.role}', you selected '${role}'.` });
     }
-    console.log(user,"user found");
-    console.log(password,"password");
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Incorrect password." });
     }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+
+    // Create token payload
+    const tokenPayload = {
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role
+    };
+
+    console.log("Creating token with payload:", tokenPayload);
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
+
+    // Verify token immediately after creation (debug)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Verified token contains:", decoded);
+
+    // Store token in localStorage
     res.status(200).json({
       message: "Login successful",
       token,
-      user: { email: user.email, name: user.name, role: user.role },
+      user: { 
+        _id: user._id,
+        email: user.email, 
+        name: user.name, 
+        role: user.role,
+        voterId: user.voterId 
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
 };
-
-
 
 module.exports = { registerUser, loginUser };

@@ -16,32 +16,52 @@ const Login = ({ setIsLoggedIn, setUser }) => {
         "/api/auth/login",
         { email, password, role }
       );
+
+      console.log("✅ Login response:", response.data);
+      
+      // Ensure user object has _id
+      if (!response.data.user._id) {
+        throw new Error("Server response missing user ID");
+      }
+
+      // Store complete user object
+      const userData = response.data.user;
+      console.log("📝 Storing user data:", userData);
+      
       localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("user", JSON.stringify(userData));
+      
+      // Verify stored data
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      console.log("🔍 Verified stored user data:", storedUser);
+      
       setIsLoggedIn(true);
-      setUser(response.data.user);
-      if (response.data.user.role === "admin") {
+      setUser(userData);
+      
+      if (userData.role === "admin") {
         navigate("/admin");
       } else {
         navigate("/profile");
       }
     } catch (error) {
+      console.error("❌ Login error:", error.response?.data || error.message);
       setError(error.response?.data?.message || "Invalid credentials. Please try again.");
     }
   };
 
   return (
-    <div>
+    <div style={{ maxWidth: '400px', margin: '0 auto', padding: '20px' }}>
       <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <select
           value={role}
           onChange={e => setRole(e.target.value)}
-          style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
         >
           <option value="voter">Voter</option>
           <option value="admin">Admin</option>
         </select>
+        
         <input
           type="email"
           placeholder="Email"
@@ -49,7 +69,9 @@ const Login = ({ setIsLoggedIn, setUser }) => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="username"
-        /><br/>
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+        />
+        
         <input
           type="password"
           placeholder="Password"
@@ -57,9 +79,28 @@ const Login = ({ setIsLoggedIn, setUser }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-        /><br/>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button type="submit">Login</button>
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+        />
+        
+        {error && (
+          <div style={{ color: "red", marginBottom: "10px" }}>
+            {error}
+          </div>
+        )}
+        
+        <button 
+          type="submit"
+          style={{
+            padding: '10px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Login
+        </button>
       </form>
     </div>
   );

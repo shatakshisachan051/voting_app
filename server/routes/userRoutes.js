@@ -3,6 +3,57 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 
+// Get all users with optional filter
+router.get("/", async (req, res) => {
+  try {
+    const { filter } = req.query;
+    let query = {};
+    
+    if (filter === 'voters') {
+      query.role = 'voter';
+    } else if (filter === 'admins') {
+      query.role = 'admin';
+    }
+    
+    const users = await User.find(query).select('-password');
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: "Error fetching users" });
+  }
+});
+
+// Update user role (make/remove admin)
+router.patch("/:userId/role", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isAdmin } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { role: isAdmin ? 'admin' : 'voter' },
+      { new: true }
+    ).select('-password');
+    
+    res.json(user);
+  } catch (err) {
+    console.error("Error updating user role:", err);
+    res.status(500).json({ message: "Error updating user role" });
+  }
+});
+
+// Delete user
+router.delete("/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    await User.findByIdAndDelete(userId);
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    res.status(500).json({ message: "Error deleting user" });
+  }
+});
+
 // ✅ Update profile
 router.put("/update/:userId", async (req, res) => {
   const { userId } = req.params;

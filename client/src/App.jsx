@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -9,6 +14,8 @@ import VotingHistory from "./components/VotingHistory";
 import EditProfile from "./components/EditProfile";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminElections from "./components/AdminElections"; // 🆕 admin manage elections
+import AdminUsers from "./components/AdminUsers"; // 🆕 Import AdminUsers
+import AdminAnalytics from "./components/AdminAnalytics"; // 🆕 Import AdminAnalytics
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,7 +40,11 @@ function App() {
           path="/login"
           element={
             isLoggedIn ? (
-              user?.role === "admin" ? <Navigate to="/admin" /> : <Navigate to="/profile" />
+              user?.role === "admin" ? (
+                <Navigate to="/admin" />
+              ) : (
+                <Navigate to="/profile" />
+              )
             ) : (
               <Login setIsLoggedIn={setIsLoggedIn} setUser={setUser} />
             )
@@ -47,7 +58,7 @@ function App() {
           path="/profile"
           element={
             isLoggedIn && user?.role === "voter" ? (
-              <VoterProfile user={user} />
+              <VoterProfile user={user} setUser={setUser} />
             ) : (
               <Navigate to="/login" />
             )
@@ -100,6 +111,26 @@ function App() {
           element={
             isLoggedIn && user?.role === "admin" ? (
               <AdminElections user={user} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            isLoggedIn && user?.role === "admin" ? (
+              <AdminUsers user={user} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            isLoggedIn && user?.role === "admin" ? (
+              <AdminAnalytics user={user} />
             ) : (
               <Navigate to="/login" />
             )
