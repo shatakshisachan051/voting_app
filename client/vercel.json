@@ -1,8 +1,16 @@
 {
     "rewrites": [
       {
-        "source": "/(.*)",
-        "destination": "/index.html"
+        "source": "/api/(.*)",
+        "destination": "https://voting-app-1naw.onrender.com/api/$1"
+      },
+      {
+        "source": "/models/(.*)",
+        "destination": "https://voting-app-1naw.onrender.com/models/$1"
+      },
+      {
+        "source": "/uploads/(.*)",
+        "destination": "https://voting-app-1naw.onrender.com/uploads/$1"
       }
     ]
-  } 
+  }
