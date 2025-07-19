@@ -5,12 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/models': 'http://localhost:8080',
-      '/uploads': 'http://localhost:8080'
+      '/api': 'https://voting-app-1naw.onrender.com',
+      '/models': 'https://voting-app-1naw.onrender.com',
+      '/uploads': 'https://voting-app-1naw.onrender.com'
     }
   },
   define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify('http://localhost:8080')
+    'import.meta.env.VITE_API_URL': JSON.stringify('https://voting-app-1naw.onrender.com')
   }
 });
