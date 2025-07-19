@@ -1,5 +1,6 @@
-import axios from "../axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
+import axios from '../axios';
+import FaceVerification from './FaceVerification';
 
 const Voting = () => {
   const [elections, setElections] = useState([]);
@@ -8,6 +9,12 @@ const Voting = () => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFaceVerification, setShowFaceVerification] = useState(false);
+  const [selectedVote, setSelectedVote] = useState(null);
+  const [userStatus, setUserStatus] = useState({
+    isProfileComplete: false,
+    isVerifiedByAdmin: false
+  });
 
   // Calculate election status based on dates
   const getElectionStatus = (election) => {
@@ -28,6 +35,22 @@ const Voting = () => {
     }
   }, []);
 
+  // Check user status
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        const response = await axios.get('/users/profile-status');
+        setUserStatus(response.data);
+      } catch (err) {
+        console.error('Error checking user status:', err);
+      }
+    };
+
+    if (userId) {
+      checkUserStatus();
+    }
+  }, [userId]);
+
   // Fetch user's voting history
   const fetchUserVotes = async () => {
     if (!userId) return;
@@ -36,7 +59,6 @@ const Voting = () => {
       const response = await axios.get("/votes/history");
       console.log("Received voting history:", response.data);
       
-      // Create a map of election IDs that user has voted in
       const votedElections = {};
       response.data.forEach(vote => {
         if (vote.election) {
@@ -67,53 +89,61 @@ const Voting = () => {
     }
   };
 
-  const handleVote = async (electionId, candidateName) => {
+  const handleVoteClick = async (electionId, candidateName) => {
+    if (!userStatus.isProfileComplete) {
+      setError("Please complete your profile before voting.");
+      return;
+    }
+
+    if (!userStatus.isVerifiedByAdmin) {
+      setError("Your profile is pending admin verification.");
+      return;
+    }
+
+    setSelectedVote({ electionId, candidateName });
+    setShowFaceVerification(true);
+  };
+
+  const handleVote = async () => {
     try {
-      if (isSubmitting) {
-        return; // Prevent multiple submissions
-      }
+      if (isSubmitting) return;
 
       if (!userId) {
         setError("User ID not found. Please try logging in again.");
         return;
       }
 
-      // Check if user has already voted in this election
-      if (userVotes[electionId]) {
+      if (userVotes[selectedVote.electionId]) {
         setError("You have already voted in this election.");
         return;
       }
 
       setIsSubmitting(true);
-      setError(""); // Clear any previous errors
+      setError(""); 
       
-      console.log("Submitting vote:", { electionId, candidateName });
+      console.log("Submitting vote:", selectedVote);
       
       const response = await axios.post("/votes", { 
-        electionId, 
-        candidateName 
+        electionId: selectedVote.electionId, 
+        candidateName: selectedVote.candidateName 
       });
 
-      // Only update local state if vote was successful
       if (response.status === 201) {
         console.log("Vote successful:", response.data);
-        
-        // Update the voting history immediately
         setUserVotes(prev => ({
           ...prev,
-          [electionId]: true
+          [selectedVote.electionId]: true
         }));
-        
         alert(response.data.message || "Vote submitted successfully!");
       }
     } catch (err) {
       console.error("❌ Error submitting vote:", err.response?.data);
       setError(err.response?.data?.message || "Failed to submit vote");
-      
-      // Refresh voting history to ensure consistency
       await fetchUserVotes();
     } finally {
       setIsSubmitting(false);
+      setShowFaceVerification(false);
+      setSelectedVote(null);
     }
   };
 
@@ -121,8 +151,8 @@ const Voting = () => {
   useEffect(() => {
     if (userId) {
       const loadInitialData = async () => {
-        await fetchUserVotes(); // First get voting history
-        await fetchElections(); // Then get elections
+        await fetchUserVotes();
+        await fetchElections();
       };
       loadInitialData();
     }
@@ -134,6 +164,37 @@ const Voting = () => {
 
   if (!userId) {
     return <div style={{ color: 'red', padding: '20px' }}>Error: User data not found. Please log in again.</div>;
+  }
+
+  if (!userStatus.isProfileComplete) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h3>Complete Your Profile</h3>
+        <p>Please complete your profile before accessing the voting system.</p>
+        <button
+          onClick={() => window.location.href = '/complete-profile'}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Complete Profile
+        </button>
+      </div>
+    );
+  }
+
+  if (!userStatus.isVerifiedByAdmin) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h3>Profile Pending Verification</h3>
+        <p>Your profile is currently under review. Please wait for admin verification before voting.</p>
+      </div>
+    );
   }
 
   return (
@@ -155,6 +216,53 @@ const Voting = () => {
           >
             ✕
           </button>
+        </div>
+      )}
+      
+      {showFaceVerification && (
+        <div style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{ 
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            maxWidth: '800px',
+            width: '100%'
+          }}>
+            <h3>Face Verification Required</h3>
+            <FaceVerification
+              onVerified={handleVote}
+              onError={(err) => {
+                setError(err);
+                setShowFaceVerification(false);
+              }}
+              storedPhotoUrl={`/uploads/photos/${JSON.parse(localStorage.getItem("user")).photoPath}`}
+            />
+            <button
+              onClick={() => setShowFaceVerification(false)}
+              style={{
+                marginTop: '10px',
+                padding: '5px 10px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
       
@@ -205,7 +313,7 @@ const Voting = () => {
                       >
                         <span>{candidateName}</span>
                         <button 
-                          onClick={() => handleVote(election._id, candidateName)}
+                          onClick={() => handleVoteClick(election._id, candidateName)}
                           disabled={hasVoted || status !== "active" || isSubmitting}
                           style={{
                             padding: '5px 10px',

@@ -2,36 +2,29 @@ import React, { useEffect, useState } from 'react';
 import axios from '../axios';
 
 const AdminUsers = ({ user }) => {
-  console.log("🔄 AdminUsers component rendered", { user });
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // all, voters, admins
+  const [filter, setFilter] = useState('all'); // all, pending, verified, incomplete
 
   useEffect(() => {
-    console.log("🔄 AdminUsers useEffect triggered with filter:", filter);
     const fetchUsers = async () => {
       try {
         const token = localStorage.getItem("token");
-        console.log("🔑 Using token for users fetch:", token ? "Token exists" : "No token!");
-        
-        const res = await axios.get(`/users?filter=${filter}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+
+        const response = await axios.get(`/admin/users?filter=${filter}`, {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        console.log("👥 Users data received:", {
-          count: res.data.length,
-          filter: filter
-        });
-        setUsers(res.data);
-        setLoading(false);
+
+        setUsers(response.data);
+        setError(null);
       } catch (err) {
-        console.error("❌ Failed to fetch users:", {
-          error: err.message,
-          response: err.response?.data,
-          status: err.response?.status,
-          filter: filter
-        });
-        setError(err.response?.data?.message || "Failed to load users");
+        console.error("Failed to fetch users:", err);
+        setError("Failed to load users");
+      } finally {
         setLoading(false);
       }
     };
@@ -39,131 +32,126 @@ const AdminUsers = ({ user }) => {
     fetchUsers();
   }, [filter]);
 
-  const handleDeleteUser = async (userId) => {
-    console.log("🗑️ Attempting to delete user:", userId);
-    if (!window.confirm("Are you sure you want to delete this user?")) {
-      console.log("❌ User deletion cancelled by user");
-      return;
-    }
-
+  const handleVerifyUser = async (userId, action) => {
     try {
       const token = localStorage.getItem("token");
-      console.log("🔑 Using token for user deletion:", token ? "Token exists" : "No token!");
-      await axios.delete(`/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("✅ User deleted successfully:", userId);
-      setUsers(users.filter(u => u._id !== userId));
-      alert("User deleted successfully!");
-    } catch (err) {
-      console.error("❌ Failed to delete user:", {
-        userId,
-        error: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      });
-      alert(err.response?.data?.message || "Failed to delete user");
-    }
-  };
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
 
-  const handleToggleAdmin = async (userId, currentRole) => {
-    const isCurrentlyAdmin = currentRole === 'admin';
-    console.log("🔄 Attempting to toggle admin status:", { userId, currentRole });
-    try {
-      const token = localStorage.getItem("token");
-      console.log("🔑 Using token for admin toggle:", token ? "Token exists" : "No token!");
-      
-      const res = await axios.patch(`/users/${userId}/role`, 
-        { isAdmin: !isCurrentlyAdmin },
+      const response = await axios.put(
+        `/admin/users/${userId}/verify`,
+        { action },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log("✅ User role updated successfully:", res.data);
-      
+
+      // Update the user in the list
       setUsers(users.map(u => 
-        u._id === userId ? { ...u, role: isCurrentlyAdmin ? 'voter' : 'admin' } : u
+        u._id === userId ? response.data.user : u
       ));
-      alert("User role updated successfully!");
+
+      alert(response.data.message);
     } catch (err) {
-      console.error("❌ Failed to update user role:", {
-        userId,
-        currentRole,
-        error: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      });
-      alert(err.response?.data?.message || "Failed to update user role");
+      console.error("Failed to verify user:", err);
+      alert(err.response?.data?.message || "Failed to update user verification status");
     }
   };
 
   if (loading) {
-    console.log("⌛ Loading users...");
     return <div>Loading users...</div>;
   }
 
   if (error) {
-    console.log("❌ Rendering error state:", error);
-    return <div>Error: {error}</div>;
+    return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>;
   }
 
-  console.log("👥 Rendering users table with data:", {
-    totalUsers: users.length,
-    admins: users.filter(u => u.role === 'admin').length,
-    voters: users.filter(u => u.role === 'voter').length
-  });
-
   return (
-    <div>
+    <div style={{ padding: '20px' }}>
       <h2>👥 Manage Users</h2>
       
       <div style={{ marginBottom: '20px' }}>
         <select 
           value={filter} 
           onChange={(e) => setFilter(e.target.value)}
-          style={{ padding: '5px', marginRight: '10px' }}
+          style={{ 
+            padding: '8px',
+            marginRight: '10px',
+            borderRadius: '4px',
+            border: '1px solid #ddd'
+          }}
         >
           <option value="all">All Users</option>
-          <option value="voters">Voters Only</option>
-          <option value="admins">Admins Only</option>
+          <option value="pending">Pending Verification</option>
+          <option value="verified">Verified Users</option>
+          <option value="incomplete">Incomplete Profiles</option>
         </select>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: '10px', borderBottom: '2px solid #ddd' }}>Name</th>
-            <th style={{ textAlign: 'left', padding: '10px', borderBottom: '2px solid #ddd' }}>Email</th>
-            <th style={{ textAlign: 'left', padding: '10px', borderBottom: '2px solid #ddd' }}>Voter ID</th>
-            <th style={{ textAlign: 'left', padding: '10px', borderBottom: '2px solid #ddd' }}>Role</th>
-            <th style={{ textAlign: 'left', padding: '10px', borderBottom: '2px solid #ddd' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user._id}>
-              <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>{user.name}</td>
-              <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>{user.email}</td>
-              <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>{user.voterId || 'N/A'}</td>
-              <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
-                {user.role === 'admin' ? '👑 Admin' : '🗳️ Voter'}
-              </td>
-              <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
-                <button
-                  onClick={() => handleToggleAdmin(user._id, user.role)}
-                  style={{ marginRight: '10px' }}
-                >
-                  {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                </button>
-                <button
-                  onClick={() => handleDeleteUser(user._id)}
-                  style={{ backgroundColor: 'red', color: 'white' }}
-                >
-                  Delete
-                </button>
-              </td>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f5f5f5' }}>
+              <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #ddd' }}>Name</th>
+              <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #ddd' }}>Email</th>
+              <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #ddd' }}>Status</th>
+              <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #ddd' }}>Voter ID</th>
+              <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #ddd' }}>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map(user => (
+              <tr key={user._id} style={{ borderBottom: '1px solid #ddd' }}>
+                <td style={{ padding: '12px' }}>{user.name || 'Not Set'}</td>
+                <td style={{ padding: '12px' }}>{user.email}</td>
+                <td style={{ padding: '12px' }}>
+                  {!user.isProfileComplete ? '⚠️ Incomplete' :
+                   !user.isVerifiedByAdmin ? '⏳ Pending Verification' :
+                   '✅ Verified'}
+                </td>
+                <td style={{ padding: '12px' }}>{user.voterId || 'Not Assigned'}</td>
+                <td style={{ padding: '12px' }}>
+                  {user.isProfileComplete && !user.isVerifiedByAdmin && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => handleVerifyUser(user._id, 'approve')}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#4CAF50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✅ Approve
+                      </button>
+                      <button
+                        onClick={() => handleVerifyUser(user._id, 'reject')}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ❌ Reject
+                      </button>
+                    </div>
+                  )}
+                  {user.isVerifiedByAdmin && (
+                    <span style={{ color: 'green' }}>Verified ✓</span>
+                  )}
+                  {!user.isProfileComplete && (
+                    <span style={{ color: 'orange' }}>Awaiting Profile Completion</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -80,13 +80,13 @@ const Register = () => {
           <option value="admin">Admin</option>
         </select>
         {formData.role === "voter" && (
-          <input
-            type="text"
-            name="voterId"
-            placeholder="Voter ID"
-            value={formData.voterId}
-            onChange={handleChange}
-            required
+        <input
+          type="text"
+          name="voterId"
+          placeholder="Voter ID"
+          value={formData.voterId}
+          onChange={handleChange}
+          required
             autoComplete="off"
             style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
           />
@@ -100,8 +100,8 @@ const Register = () => {
             onChange={handleChange}
             required
             autoComplete="off"
-            style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
-          />
+          style={{ display: "block", width: "100%", marginBottom: "10px", padding: "8px" }}
+        />
         )}
         {error && <p style={{ color: "red" }}>{error}</p>}
         <button type="submit" style={{ padding: "10px 20px" }}>Register</button>

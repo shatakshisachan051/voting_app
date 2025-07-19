@@ -20,10 +20,19 @@ const registerUser = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userData = { name, email, password: hashedPassword, role: role === "admin" ? "admin" : "voter" };
+    const userData = { 
+      name, 
+      email, 
+      password: hashedPassword, 
+      role: role === "admin" ? "admin" : "voter",
+      isProfileComplete: false,
+      isVerifiedByAdmin: false
+    };
+    
     if (role === "voter" && req.body.voterId) {
       userData.voterId = req.body.voterId;
     }
+    
     console.log("Registering user:", userData);
     const user = new User(userData);
     await user.save();
@@ -73,7 +82,7 @@ const loginUser = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("Verified token contains:", decoded);
 
-    // Store token in localStorage
+    // Return complete user data
     res.status(200).json({
       message: "Login successful",
       token,
@@ -82,7 +91,13 @@ const loginUser = async (req, res) => {
         email: user.email, 
         name: user.name, 
         role: user.role,
-        voterId: user.voterId 
+        voterId: user.voterId,
+        age: user.age,
+        address: user.address,
+        photoPath: user.photoPath,
+        documentPath: user.documentPath,
+        isProfileComplete: user.isProfileComplete,
+        isVerifiedByAdmin: user.isVerifiedByAdmin
       },
     });
   } catch (error) {

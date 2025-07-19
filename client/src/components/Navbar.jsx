@@ -11,7 +11,9 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
     navigate("/login");
   };
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  // Safely get and parse user data with strict checking
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser && storedUser !== "undefined" && storedUser !== "null" ? JSON.parse(storedUser) : null;
 
   return (
     <nav

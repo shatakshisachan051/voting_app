@@ -12,10 +12,11 @@ import VoterProfile from "./components/VoterProfile";
 import Voting from "./components/Voting";
 import VotingHistory from "./components/VotingHistory";
 import EditProfile from "./components/EditProfile";
+import CompleteProfile from "./components/CompleteProfile";
 import AdminDashboard from "./components/AdminDashboard";
-import AdminElections from "./components/AdminElections"; // 🆕 admin manage elections
-import AdminUsers from "./components/AdminUsers"; // 🆕 Import AdminUsers
-import AdminAnalytics from "./components/AdminAnalytics"; // 🆕 Import AdminAnalytics
+import AdminElections from "./components/AdminElections";
+import AdminUsers from "./components/AdminUsers";
+import AdminAnalytics from "./components/AdminAnalytics";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -25,11 +26,28 @@ function App() {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 
-    if (token && storedUser) {
-      setIsLoggedIn(true);
-      setUser(JSON.parse(storedUser));
+    if (token && storedUser && storedUser !== "undefined" && storedUser !== "null") {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && typeof parsedUser === 'object') {
+          setIsLoggedIn(true);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
     }
   }, []);
+
+  // Helper function to handle voter redirects based on profile status
+  const getVoterRedirect = () => {
+    if (!user?.isProfileComplete) {
+      return <Navigate to="/complete-profile" />;
+    }
+    return <Navigate to="/edit-profile" />;
+  };
 
   return (
     <Router>
@@ -43,7 +61,7 @@ function App() {
               user?.role === "admin" ? (
                 <Navigate to="/admin" />
               ) : (
-                <Navigate to="/profile" />
+                getVoterRedirect()
               )
             ) : (
               <Login setIsLoggedIn={setIsLoggedIn} setUser={setUser} />
@@ -52,13 +70,31 @@ function App() {
         />
         <Route
           path="/register"
-          element={isLoggedIn ? <Navigate to="/profile" /> : <Register />}
+          element={isLoggedIn ? getVoterRedirect() : <Register />}
+        />
+        <Route
+          path="/complete-profile"
+          element={
+            isLoggedIn && user?.role === "voter" ? (
+              user?.isProfileComplete ? (
+                <Navigate to="/edit-profile" />
+              ) : (
+                <CompleteProfile user={user} setUser={setUser} />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
         <Route
           path="/profile"
           element={
             isLoggedIn && user?.role === "voter" ? (
-              <VoterProfile user={user} setUser={setUser} />
+              user?.isProfileComplete ? (
+                <Navigate to="/edit-profile" />
+              ) : (
+                <Navigate to="/complete-profile" />
+              )
             ) : (
               <Navigate to="/login" />
             )
@@ -68,7 +104,11 @@ function App() {
           path="/voting"
           element={
             isLoggedIn && user?.role === "voter" ? (
-              <Voting user={user} isLoggedIn={isLoggedIn} />
+              user?.isProfileComplete ? (
+                <Voting user={user} isLoggedIn={isLoggedIn} />
+              ) : (
+                <Navigate to="/complete-profile" />
+              )
             ) : (
               <Navigate to="/login" />
             )
@@ -78,7 +118,11 @@ function App() {
           path="/history"
           element={
             isLoggedIn && user?.role === "voter" ? (
-              <VotingHistory user={user} />
+              user?.isProfileComplete ? (
+                <VotingHistory user={user} />
+              ) : (
+                <Navigate to="/complete-profile" />
+              )
             ) : (
               <Navigate to="/login" />
             )
@@ -88,14 +132,18 @@ function App() {
           path="/edit-profile"
           element={
             isLoggedIn && user?.role === "voter" ? (
-              <EditProfile user={user} />
+              user?.isProfileComplete ? (
+                <EditProfile user={user} setUser={setUser} />
+              ) : (
+                <Navigate to="/complete-profile" />
+              )
             ) : (
               <Navigate to="/login" />
             )
           }
         />
 
-        {/* 🆕 Admin routes */}
+        {/* Admin routes */}
         <Route
           path="/admin"
           element={
